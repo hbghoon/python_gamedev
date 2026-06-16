@@ -45,6 +45,7 @@ class App:
         self.ball = pygame.Rect (315, 195, 10, 10)
         self.ball_vx = 4 * random.choice([-1, 1])
         self.ball_vy = 4 * random.choice([-1, 1])
+        self.ball_pause = 60
         
     
     def on_loop(self):
@@ -52,6 +53,8 @@ class App:
         self.ball.y += self.ball_vy
         if self.ball.top <= 0 or self.ball.bottom >= self.height:
             self.ball_vy = -self.ball_vy
+        if self.ball_pause > 0:
+            self.ball_pause -= 1
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
             self.paddle.y -= 5
@@ -103,8 +106,6 @@ class App:
             self.on_render()
             self.clock.tick(60)
         self.on_cleanup()
-
-    
 
 
 if __name__ == "__main__":

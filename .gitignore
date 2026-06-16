@@ -1,0 +1,12 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# VS Code / Code Runner
+tempCodeRunnerFile.py
+
+# Pong notes / backlog
+pong-game-backlog.md
