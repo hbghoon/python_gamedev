@@ -49,12 +49,25 @@ class App:
         
     
     def on_loop(self):
-        self.ball.x += self.ball_vx
-        self.ball.y += self.ball_vy
-        if self.ball.top <= 0 or self.ball.bottom >= self.height:
-            self.ball_vy = -self.ball_vy
         if self.ball_pause > 0:
             self.ball_pause -= 1
+        else:
+            self.ball.x += self.ball_vx
+            self.ball.y += self.ball_vy
+            if self.ball.top <= 0 or self.ball.bottom >= self.height:
+                self.ball_vy = -self.ball_vy
+            if self.ball.left < 0:
+                self.score2 += 1
+                self.reset_ball()
+            if self.ball.right > self.width:
+                self.score1 += 1
+                self.reset_ball()
+            if (self.ball.colliderect(self.paddle) and self.ball_vx < 0) or (self.ball.colliderect(self.paddle2) and self.ball_vx > 0):
+                self.ball_vx = -self.ball_vx
+        
+        #if self.score1 == 10 or self.score2 == 10:
+            
+            
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
             self.paddle.y -= 5
@@ -72,14 +85,6 @@ class App:
             self.paddle2.y = 0
         if self.paddle2.y > 320:
             self.paddle2.y = 320
-        if self.ball.left < 0:
-            self.score2 += 1
-            self.reset_ball()
-        if self.ball.right > self.width:
-            self.score1 += 1
-            self.reset_ball()
-        if (self.ball.colliderect(self.paddle) and self.ball_vx < 0) or (self.ball.colliderect(self.paddle2) and self.ball_vx > 0):
-            self.ball_vx = -self.ball_vx
 
     def on_render(self):
         self._display_surf.fill ((0, 0, 0))
