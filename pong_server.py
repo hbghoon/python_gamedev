@@ -1,9 +1,9 @@
-import pygame, random, socket, json
+import pygame, random, socket, json, threading
 from pygame.locals import *
 
 # ---- network settings ----
 HOST = "0.0.0.0"   # "0.0.0.0" = accept connections on ALL network interfaces,
-                   # so other machines on the LAN can reach us (not just this PC).
+                # so other machines on the LAN can reach us (not just this PC).
 PORT = 5555
 
 
@@ -23,6 +23,7 @@ class App:
         self.reset_ball()
         self.score1 = 0
         self.score2 = 0
+        self.client_intent = 0
         self.font = pygame.font.Font(None, 50)
         self.clock = pygame.time.Clock()
 
@@ -34,6 +35,9 @@ class App:
         print("Waiting for Player 2 to connect...")
         self.conn, addr = self.server_sock.accept()   # BLOCKS here until the client dials in
         print("Player 2 connected from", addr)
+
+        self.net_thread = threading.Thread(target=self.network_loop, daemon=True)
+        self.net_thread.start()
 
         self._running = True
         return True
@@ -47,6 +51,27 @@ class App:
         self.ball_vx = 4 * random.choice([-1, 1])
         self.ball_vy = 4 * random.choice([-1, 1])
         self.ball_pause = 60
+    
+    def network_loop (self):
+        while self._running:
+            try:
+                msg = self.conn.recv (1024).decode()
+                if msg == "":
+                    self._running = False
+                    return
+                self.client_intent = int(msg.strip().split("\n")[-1])
+                state = {
+                    "ball_x": self.ball.x,
+                    "ball_y": self.ball.y,
+                    "p1y": self.paddle.y,
+                    "p2y": self.paddle2.y,
+                    "s1": self.score1,
+                    "s2": self.score2
+                }
+                self.conn.send((json.dumps(state) + "\n").encode())
+            except (ConnectionResetError, ValueError, OSError):
+                self._running = False
+                return
 
     def on_loop(self):
         # --- 1. host's own input (Player 1, W/S) ---
@@ -60,18 +85,8 @@ class App:
         if self.paddle.y > 320:
             self.paddle.y = 320
 
-        # --- 2. receive Player 2's intent from the client, apply to paddle2 ---
-        try:
-            msg = self.conn.recv(1024).decode()       # e.g. "1\n" (or batched "1\n0\n")
-            if msg == "":                             # empty = client closed the connection
-                self._running = False
-                return
-            intent = int(msg.strip().split("\n")[-1])  # take the most recent line: -1, 0, or 1
-        except (ConnectionResetError, ValueError, OSError):
-            self._running = False
-            return
-
-        self.paddle2.y += intent * 5
+        #2. apply intent recieved from thread 
+        self.paddle2.y += self.client_intent * 5
         if self.paddle2.y < 0:
             self.paddle2.y = 0
         if self.paddle2.y > 320:
@@ -92,23 +107,8 @@ class App:
                 self.score1 += 1
                 self.reset_ball()
             if (self.ball.colliderect(self.paddle) and self.ball_vx < 0) or \
-               (self.ball.colliderect(self.paddle2) and self.ball_vx > 0):
+            (self.ball.colliderect(self.paddle2) and self.ball_vx > 0):
                 self.ball_vx = -self.ball_vx
-
-        # --- 4. send the full game state back to the client ---
-        state = {
-            "ball_x": self.ball.x,
-            "ball_y": self.ball.y,
-            "p1y": self.paddle.y,
-            "p2y": self.paddle2.y,
-            "s1": self.score1,
-            "s2": self.score2,
-        }
-        msg = json.dumps(state) + "\n"   # dict -> JSON text, newline marks the message end
-        try:
-            self.conn.send(msg.encode())
-        except OSError:
-            self._running = False
 
     def on_render(self):
         self._display_surf.fill((0, 0, 0))

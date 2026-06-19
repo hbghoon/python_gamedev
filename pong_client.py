@@ -1,4 +1,4 @@
-import pygame, socket, json
+import pygame, socket, json, threading
 from pygame.locals import *
 
 HOST = "127.0.0.1"
@@ -22,6 +22,11 @@ class App:
         #network setup
         self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.s.connect((HOST, PORT))
+        self.intent = 0
+        self.s1 = 0
+        self.s2 = 0
+        self.net_thread = threading.Thread(target=self.network_loop, daemon= True)
+        self.net_thread.start()
 
         self._running = True
         return True
@@ -29,6 +34,26 @@ class App:
     def on_event (self, event):
         if event.type == pygame.QUIT:
             self._running = False
+
+    def network_loop (self):
+        while self._running:
+            try:
+                self.s.send((f"{self.intent}\n").encode())
+                msg = self.s.recv(1024).decode()
+                if msg == "":
+                    self._running = False
+                    return
+                latest = msg.strip().split("\n")[-1]
+                state = json.loads(latest)
+                self.ball.x = state["ball_x"]
+                self.ball.y = state["ball_y"]
+                self.paddle.y = state["p1y"]
+                self.paddle2.y = state["p2y"]
+                self.s1 = state["s1"]
+                self.s2 = state["s2"]
+            except(ConnectionResetError, OSError, ValueError):
+                self._running = False
+                return
     
     def on_loop (self):
         keys = pygame.key.get_pressed()
@@ -37,33 +62,7 @@ class App:
             intent = 1
         if keys[pygame.K_UP]:
             intent = -1
-        
-        intent_send = f"{intent}\n"
-        try:
-            self.s.send(intent_send.encode())
-        except OSError:
-            self._running = False
-            return
-        
-        #recieve:
-
-        try:
-            msg = self.s.recv (1024).decode()
-            if msg == "":
-                self._running = False
-                return
-            latest = msg.strip().split("\n")[-1]
-            state = json.loads(latest)          # JSON text -> dict
-            self.ball.x = state["ball_x"]
-            self.ball.y = state["ball_y"]
-            self.paddle.y = state["p1y"]
-            self.paddle2.y = state["p2y"]
-            self.s1 = state["s1"]
-            self.s2 = state["s2"]
-        except (ConnectionResetError, ValueError, OSError):
-            self._running = False
-        
-
+        self.intent = intent
 
     def on_render (self):
         self._display_surf.fill((0, 0, 0))
