@@ -1,4 +1,4 @@
-import pygame, random, socket
+import pygame, random, socket, json
 from pygame.locals import *
 
 # ---- network settings ----
@@ -96,9 +96,17 @@ class App:
                 self.ball_vx = -self.ball_vx
 
         # --- 4. send the full game state back to the client ---
-        state = f"{self.ball.x},{self.ball.y},{self.paddle.y},{self.paddle2.y},{self.score1},{self.score2}\n"
+        state = {
+            "ball_x": self.ball.x,
+            "ball_y": self.ball.y,
+            "p1y": self.paddle.y,
+            "p2y": self.paddle2.y,
+            "s1": self.score1,
+            "s2": self.score2,
+        }
+        msg = json.dumps(state) + "\n"   # dict -> JSON text, newline marks the message end
         try:
-            self.conn.send(state.encode())
+            self.conn.send(msg.encode())
         except OSError:
             self._running = False
 

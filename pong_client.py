@@ -1,4 +1,4 @@
-import pygame, socket
+import pygame, socket, json
 from pygame.locals import *
 
 HOST = "127.0.0.1"
@@ -53,9 +53,13 @@ class App:
                 self._running = False
                 return
             latest = msg.strip().split("\n")[-1]
-            self.ball.x, self.ball.y, self.p1y, self.p2y, self.s1, self.s2 = map(int, latest.split(","))
-            self.paddle.y = self.p1y
-            self.paddle2.y = self.p2y
+            state = json.loads(latest)          # JSON text -> dict
+            self.ball.x = state["ball_x"]
+            self.ball.y = state["ball_y"]
+            self.paddle.y = state["p1y"]
+            self.paddle2.y = state["p2y"]
+            self.s1 = state["s1"]
+            self.s2 = state["s2"]
         except (ConnectionResetError, ValueError, OSError):
             self._running = False
         
