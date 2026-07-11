@@ -6,6 +6,10 @@ HOST = "0.0.0.0"   # "0.0.0.0" = accept connections on ALL network interfaces,
                 # so other machines on the LAN can reach us (not just this PC).
 PORT = 5555
 
+# ---- ball/paddle physics tuning ----
+PADDLE_SPIN_FACTOR = 0.6   # how much of the paddle's velocity transfers to the ball's vy
+MAX_BALL_VY = 10           # cap so a fast paddle swipe can't send the ball near-vertical
+
 
 class App:
     def __init__(self):
@@ -24,6 +28,8 @@ class App:
         self.score1 = 0
         self.score2 = 0
         self.client_intent = 0
+        self.paddle_vy = 0
+        self.paddle2_vy = 0
         self.font = pygame.font.Font(None, 50)
         self.clock = pygame.time.Clock()
 
@@ -75,6 +81,7 @@ class App:
 
     def on_loop(self):
         # --- 1. host's own input (Player 1, W/S) ---
+        prev_p1_y = self.paddle.y
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
             self.paddle.y -= 5
@@ -84,13 +91,16 @@ class App:
             self.paddle.y = 0
         if self.paddle.y > 320:
             self.paddle.y = 320
+        self.paddle_vy = self.paddle.y - prev_p1_y
 
-        #2. apply intent recieved from thread 
+        #2. apply intent recieved from thread
+        prev_p2_y = self.paddle2.y
         self.paddle2.y += self.client_intent * 5
         if self.paddle2.y < 0:
             self.paddle2.y = 0
         if self.paddle2.y > 320:
             self.paddle2.y = 320
+        self.paddle2_vy = self.paddle2.y - prev_p2_y
 
         # --- 3. run the physics (unchanged from single-player) ---
         if self.ball_pause > 0:
@@ -106,9 +116,14 @@ class App:
             if self.ball.right > self.width:
                 self.score1 += 1
                 self.reset_ball()
-            if (self.ball.colliderect(self.paddle) and self.ball_vx < 0) or \
-            (self.ball.colliderect(self.paddle2) and self.ball_vx > 0):
+            if self.ball.colliderect(self.paddle) and self.ball_vx < 0:
                 self.ball_vx = -self.ball_vx
+                self.ball_vy += self.paddle_vy * PADDLE_SPIN_FACTOR
+                self.ball_vy = max(-MAX_BALL_VY, min(MAX_BALL_VY, self.ball_vy))
+            elif self.ball.colliderect(self.paddle2) and self.ball_vx > 0:
+                self.ball_vx = -self.ball_vx
+                self.ball_vy += self.paddle2_vy * PADDLE_SPIN_FACTOR
+                self.ball_vy = max(-MAX_BALL_VY, min(MAX_BALL_VY, self.ball_vy))
 
     def on_render(self):
         self._display_surf.fill((0, 0, 0))
