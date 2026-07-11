@@ -4,6 +4,8 @@ Small Python experiments: a networked Pong game and a couple of from-scratch ML 
 
 ## Pong (LAN multiplayer)
 
+![Pong screenshot](screenshot.png)
+
 <video src="pongrec.mp4" controls width="640"></video>
 
 *(if the video doesn't render above, it's [pongrec.mp4](pongrec.mp4) in the repo root)*
